@@ -1,0 +1,169 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "7036f837-9703-4d63-86e8-51acceb64ca7",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        0
+      ],
+      "id": "ae85487e-cff9-4dcb-9d93-c5ed3ef4e1cf",
+      "name": "Webhook",
+      "webhookId": "7036f837-9703-4d63-86e8-51acceb64ca7"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama-3.1-8b-instant",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=\n> Extract the event title, date, time, and attendees from the following text:\n>\n> `\"{{ $('Webhook').item.json.body.command }}\"`\n>\n> Today’s date is: {{ $json.currentDate }}`\n>\n> **Instructions:**\n>\n> * Use today’s date{{ $json.currentDate }} to compute the correct event date if relative terms like “tomorrow” or “next Friday” are used.\n> * Format **date** as `YYYY-MM-DD`.\n> * Format **time** in 24-hour format as `HH:mm`.\n> * Set the **event duration to 1 hour**, keeping the end time on the same date.\n> * Assume timezone is `\"Asia/Kolkata\"` (`+05:30` offset).\nReturn attendees as an array of objects, each with an \"email\" key. If only a name is given, format it as name@example.com\n>\n> **Return ONLY this JSON structure:**\n\ni want it in this format\n```\n{\n  \"summary\": \"title\",\n  \"start\": {\n    \"dateTime\": \"{{ YYYY-MM-DD }}:00+05:30\",\n    \"timeZone\": \"Asia/Kolkata\"\n  },\n  \"end\": {\n    \"dateTime\": \"{{ YYYY-MM-DD }}:00+05:30\",\n    \"timeZone\": \"Asia/Kolkata\"\n  },\n  \"attendees\": [\n    { \"email\": \"example@example.com\" }\n  ]\n}\n```\n\n> ❌ No explanation, no markdown, no comments.\n> ✅ Just return the **pure JSON** as shown above.\nit is 2025 so the datetime should be 2025 only !\n"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        360,
+        0
+      ],
+      "id": "7f39972a-0b3b-4d98-9e67-3576fa283515",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "iwGM13mDDgvId99v",
+          "name": "third"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        0
+      ],
+      "id": "2e5144d9-7b1d-46e2-b732-0ad59a5135b3",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "={{ $node[\"Webhook\"].json[\"headers\"][\"content-type\"] }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $('Webhook').item.json.headers.authorization }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "={{ $node[\"Webhook\"].json[\"headers\"][\"content-type\"] }}",
+        "body": "={{ $json.message.content }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        0
+      ],
+      "id": "580a57a1-df45-4ebd-9383-5e24068e97e3",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        160,
+        0
+      ],
+      "id": "a1b93e54-0c57-43d5-beff-bbdd3cdd4e4e",
+      "name": "Date & Time"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Date & Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "129be7f9-4c37-4052-8ecc-8a92c7910536",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "10f94ca6d045c0be91b8d842ce0fcc30a48c4eeb8b58ae1dae3ab3dfe7feb1b1"
+  },
+  "id": "N13Tno3LSlarQaXG",
+  "tags": []
+}
